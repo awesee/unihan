@@ -88,6 +88,7 @@ func addColumn(name string) {
 		log.Println(err)
 	}
 }
+
 func updateValue(code, key, value string) {
 	code = strings.TrimSpace(code)
 	key = strings.TrimSpace(key)
