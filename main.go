@@ -83,7 +83,7 @@ func addColumn(name string) {
 		return
 	}
 	columns[name] = true
-	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(500) NOT NULL DEFAULT '' AFTER `char`", name)
+	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(255) NOT NULL DEFAULT '' AFTER `char`", name)
 	if _, err := db.Exec(query); err != nil {
 		log.Println(err)
 	}
@@ -95,6 +95,9 @@ func updateValue(code, key, value string) {
 	value = strings.TrimSpace(value)
 	fmt.Printf("%s\t%s\t%s\n", code, key, value)
 	addColumn(key)
+	if len(value) > 255 {
+		return
+	}
 	query := fmt.Sprintf("UPDATE `unihan` SET `%s` = ? WHERE `code` = ?", key)
 	result, err := db.Exec(query, value, code)
 	check(err)
