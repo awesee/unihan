@@ -68,7 +68,7 @@ func createDatabase() {
 func createTable() {
 	queries := []string{
 		"DROP TABLE IF EXISTS `unihan`",
-		"CREATE TABLE `unihan` (\n  `id` int unsigned NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,\n  `char` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '',\n  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `idx_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+		"CREATE TABLE `unihan` (\n  `id` int unsigned NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,\n  `char` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `idx_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	}
 	for i, query := range queries {
 		if _, err := db.Exec(query); err != nil {
@@ -83,7 +83,7 @@ func addColumn(name string) {
 		return
 	}
 	columns[name] = true
-	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(255) NULL DEFAULT '' AFTER `char`", name)
+	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(500) NOT NULL DEFAULT '' AFTER `char`", name)
 	if _, err := db.Exec(query); err != nil {
 		log.Println(err)
 	}
