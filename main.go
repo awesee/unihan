@@ -16,7 +16,11 @@ import (
 
 const dbDSN = "root@tcp(127.0.0.1:3306)/unicode"
 
-var columns = make(map[string]bool)
+var (
+	codes   = make([]string, 0)
+	columns = make(map[string]int)
+	data    = make(map[string]map[string]string)
+)
 
 var db = func() *sql.DB {
 	db, err := sql.Open("mysql", dbDSN)
@@ -46,10 +50,26 @@ func main() {
 			if len(col) < 2 || !strings.HasPrefix(col[0], "U+") {
 				continue
 			}
-			updateValue(col[0], col[1], col[2])
+			code := strings.TrimSpace(col[0])
+			key := strings.TrimSpace(col[1])
+			value := strings.TrimSpace(col[2])
+			if columns[key] <= len(value) {
+				columns[key] = len(value)
+			}
+			if data[code] == nil {
+				codes = append(codes, code)
+				data[code] = map[string]string{key: value}
+			} else {
+				data[code][key] = value
+			}
 		}
 	}
-	return
+	for _, code := range codes {
+		for key, value := range data[code] {
+			fmt.Printf("%s\t%s\t%s\n", code, key, value)
+			updateValue(code, key, value)
+		}
+	}
 }
 
 func check(err error) {
@@ -68,7 +88,7 @@ func createDatabase() {
 func createTable() {
 	queries := []string{
 		"DROP TABLE IF EXISTS `unihan`",
-		"CREATE TABLE `unihan` (\n  `id` int unsigned NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,\n  `char` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `idx_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+		"CREATE TABLE `unihan` (\n  `id` int unsigned NOT NULL AUTO_INCREMENT,\n  `code` varchar(7) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,\n  `char` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',\n  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `idx_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 	}
 	for i, query := range queries {
 		if _, err := db.Exec(query); err != nil {
@@ -78,12 +98,13 @@ func createTable() {
 }
 
 func addColumn(name string) {
-	name = strings.TrimSpace(name)
-	if name == "" || columns[name] {
+	l := columns[name]
+	if l < 0 {
 		return
 	}
-	columns[name] = true
-	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(255) NOT NULL DEFAULT '' AFTER `char`", name)
+	l += 7 - l%8
+	columns[name] = -1
+	query := fmt.Sprintf("ALTER TABLE `unicode`.`unihan` \nADD COLUMN `%s` varchar(%d) NOT NULL DEFAULT '' AFTER `char`", name, l)
 	if _, err := db.Exec(query); err != nil {
 		log.Println(err)
 	}
@@ -93,11 +114,7 @@ func updateValue(code, key, value string) {
 	code = strings.TrimSpace(code)
 	key = strings.TrimSpace(key)
 	value = strings.TrimSpace(value)
-	fmt.Printf("%s\t%s\t%s\n", code, key, value)
 	addColumn(key)
-	if len(value) > 255 {
-		return
-	}
 	query := fmt.Sprintf("UPDATE `unihan` SET `%s` = ? WHERE `code` = ?", key)
 	result, err := db.Exec(query, value, code)
 	check(err)
